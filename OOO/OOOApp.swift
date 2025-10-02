@@ -11,7 +11,7 @@ import SwiftUI
 struct OOOApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView() // similar to android compose view
         }
     }
 }
