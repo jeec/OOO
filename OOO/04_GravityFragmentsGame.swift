@@ -59,7 +59,7 @@ class GravityGameViewModel: ObservableObject {
     
     private let motionManager = CMMotionManager()
     private var gameTimer: Timer?
-    private let maxFragments = 20 // 性能考虑，限制碎片数量
+    // 移除碎片数量限制，允许更多碎片
     
     // 颜色池
     private let colors: [Color] = [
@@ -89,15 +89,11 @@ class GravityGameViewModel: ObservableObject {
     
     // MARK: - 碎片管理
     func addFragment(at location: CGPoint) {
-        // 性能优化：限制碎片数量
-        if fragments.count >= maxFragments {
-            fragments.removeFirst() // 移除最旧的碎片
-        }
-        
+        // 移除碎片数量限制，允许更多碎片
         let newFragment = Fragment(
             position: location,
             color: colors.randomElement() ?? .blue,
-            size: CGFloat.random(in: 20...40)
+            size: CGFloat.random(in: 15...60)  // 扩大碎片大小范围：15-60
         )
         
         fragments.append(newFragment)
@@ -114,7 +110,7 @@ class GravityGameViewModel: ObservableObject {
         guard isGameRunning else { return }
         
         let deltaTime: Double = 1.0/60.0
-        let gravity = 500.0 // 重力强度
+        let gravity = 1200.0 // 重力强度 - 调快掉落速度
         let friction = 0.98 // 摩擦力
         
         for i in fragments.indices {
@@ -132,10 +128,17 @@ class GravityGameViewModel: ObservableObject {
             
             // 更新旋转
             fragments[i].rotation += fragments[i].rotationSpeed * deltaTime
-            
-            // 边界检测和反弹
+        }
+        
+        // 碎片间碰撞检测
+        checkCollisions()
+        
+        // 边界检测和反弹 - 适配屏幕安全区域
+        for i in fragments.indices {
             let screenBounds = UIScreen.main.bounds
             let fragmentSize = fragments[i].size
+            let safeAreaTop: CGFloat = 50  // 顶部安全区域
+            let safeAreaBottom: CGFloat = 100  // 底部安全区域（为控制面板留空间）
             
             // 左右边界
             if fragments[i].position.x < fragmentSize/2 {
@@ -146,14 +149,84 @@ class GravityGameViewModel: ObservableObject {
                 fragments[i].velocity.dx = -fragments[i].velocity.dx * 0.8
             }
             
-            // 上下边界
-            if fragments[i].position.y < fragmentSize/2 {
-                fragments[i].position.y = fragmentSize/2
+            // 上下边界 - 考虑安全区域
+            if fragments[i].position.y < safeAreaTop + fragmentSize/2 {
+                fragments[i].position.y = safeAreaTop + fragmentSize/2
                 fragments[i].velocity.dy = -fragments[i].velocity.dy * 0.8
-            } else if fragments[i].position.y > screenBounds.height - fragmentSize/2 {
-                fragments[i].position.y = screenBounds.height - fragmentSize/2
+            } else if fragments[i].position.y > screenBounds.height - safeAreaBottom - fragmentSize/2 {
+                fragments[i].position.y = screenBounds.height - safeAreaBottom - fragmentSize/2
                 fragments[i].velocity.dy = -fragments[i].velocity.dy * 0.8
             }
+        }
+    }
+    
+    // MARK: - 碰撞检测
+    private func checkCollisions() {
+        for i in 0..<fragments.count {
+            for j in (i+1)..<fragments.count {
+                let fragment1 = fragments[i]
+                let fragment2 = fragments[j]
+                
+                // 计算两个碎片之间的距离
+                let dx = fragment1.position.x - fragment2.position.x
+                let dy = fragment1.position.y - fragment2.position.y
+                let distance = sqrt(dx * dx + dy * dy)
+                
+                // 碰撞半径（两个碎片半径之和）
+                let collisionRadius = (fragment1.size + fragment2.size) / 2
+                
+                if distance < collisionRadius && distance > 0 {
+                    // 发生碰撞
+                    handleCollision(fragment1Index: i, fragment2Index: j, dx: dx, dy: dy, distance: distance)
+                }
+            }
+        }
+    }
+    
+    private func handleCollision(fragment1Index: Int, fragment2Index: Int, dx: Double, dy: Double, distance: Double) {
+        let fragment1 = fragments[fragment1Index]
+        let fragment2 = fragments[fragment2Index]
+        
+        // 计算碰撞法向量
+        let nx = dx / distance
+        let ny = dy / distance
+        
+        // 计算相对速度
+        let relativeVx = fragment1.velocity.dx - fragment2.velocity.dx
+        let relativeVy = fragment1.velocity.dy - fragment2.velocity.dy
+        
+        // 计算相对速度在法向量上的投影
+        let relativeSpeed = relativeVx * nx + relativeVy * ny
+        
+        // 如果物体正在分离，不需要处理碰撞
+        if relativeSpeed > 0 {
+            return
+        }
+        
+        // 弹性碰撞系数 - 调小作用力度
+        let restitution = 0.1
+        
+        // 计算碰撞冲量
+        let impulse = -(1 + restitution) * relativeSpeed
+        
+        // 应用冲量到两个碎片
+        fragments[fragment1Index].velocity.dx += impulse * nx
+        fragments[fragment1Index].velocity.dy += impulse * ny
+        
+        fragments[fragment2Index].velocity.dx -= impulse * nx
+        fragments[fragment2Index].velocity.dy -= impulse * ny
+        
+        // 分离重叠的碎片
+        let overlap = (fragment1.size + fragment2.size) / 2 - distance
+        if overlap > 0 {
+            let separationX = nx * overlap * 0.5
+            let separationY = ny * overlap * 0.5
+            
+            fragments[fragment1Index].position.x += separationX
+            fragments[fragment1Index].position.y += separationY
+            
+            fragments[fragment2Index].position.x -= separationX
+            fragments[fragment2Index].position.y -= separationY
         }
     }
     
@@ -260,7 +333,7 @@ struct GameControlPanel: View {
                 
                 Button("添加碎片") {
                     let randomX = CGFloat.random(in: 50...UIScreen.main.bounds.width - 50)
-                    let randomY = CGFloat.random(in: 50...UIScreen.main.bounds.height - 50)
+                    let randomY = CGFloat.random(in: 100...UIScreen.main.bounds.height - 150)  // 考虑安全区域
                     viewModel.addFragment(at: CGPoint(x: randomX, y: randomY))
                 }
                 .buttonStyle(.bordered)
