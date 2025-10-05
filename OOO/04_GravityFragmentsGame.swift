@@ -20,6 +20,12 @@ struct Fragment: Identifiable {
     var rotation: Double
     var rotationSpeed: Double
     
+    // 物理属性
+    var mass: CGFloat = 1.0  // 质量
+    var pressure: CGFloat = 0.0  // 承受的压力
+    var isStable: Bool = false  // 是否稳定（停止运动）
+    var contactCount: Int = 0  // 接触的碎片数量
+    
     init(position: CGPoint, color: Color, size: CGFloat) {
         self.position = position
         self.velocity = CGVector(dx: Double.random(in: -50...50), dy: 0)
@@ -28,6 +34,10 @@ struct Fragment: Identifiable {
         self.shape = FragmentShape.allCases.randomElement() ?? .circle
         self.rotation = Double.random(in: 0...360)
         self.rotationSpeed = Double.random(in: -180...180)
+        
+        // 根据大小计算质量（体积越大质量越大，但限制最大质量）
+        let rawMass = size * size * size * 0.0001
+        self.mass = min(rawMass, 10.0) // 限制最大质量为10
     }
 }
 
@@ -38,6 +48,13 @@ enum FragmentShape: CaseIterable {
     case triangle
     case diamond
     case star
+    case hexagon
+    case pentagon
+    case octagon
+    case heart
+    case cross
+    case arrow
+    case lightning
     
     var systemName: String {
         switch self {
@@ -46,6 +63,13 @@ enum FragmentShape: CaseIterable {
         case .triangle: return "triangle.fill"
         case .diamond: return "diamond.fill"
         case .star: return "star.fill"
+        case .hexagon: return "hexagon.fill"
+        case .pentagon: return "pentagon.fill"
+        case .octagon: return "octagon.fill"
+        case .heart: return "heart.fill"
+        case .cross: return "cross.fill"
+        case .arrow: return "arrow.up.fill"
+        case .lightning: return "bolt.fill"
         }
     }
 }
@@ -63,7 +87,14 @@ class GravityGameViewModel: ObservableObject {
     
     // 颜色池
     private let colors: [Color] = [
-        .red, .blue, .green, .yellow, .orange, .purple, .pink, .cyan, .mint, .indigo
+        .red, .blue, .green, .yellow, .orange, .purple, .pink, .cyan, .mint, .indigo,
+        .teal, .brown, .gray, .black, .white, .primary, .secondary,
+        Color(red: 0.8, green: 0.2, blue: 0.8), // 紫红色
+        Color(red: 0.2, green: 0.8, blue: 0.2), // 翠绿色
+        Color(red: 0.8, green: 0.8, blue: 0.2), // 金黄色
+        Color(red: 0.2, green: 0.2, blue: 0.8), // 深蓝色
+        Color(red: 0.8, green: 0.4, blue: 0.2), // 橙红色
+        Color(red: 0.4, green: 0.2, blue: 0.8)  // 深紫色
     ]
     
     init() {
@@ -93,7 +124,7 @@ class GravityGameViewModel: ObservableObject {
         let newFragment = Fragment(
             position: location,
             color: colors.randomElement() ?? .blue,
-            size: CGFloat.random(in: 15...60)  // 扩大碎片大小范围：15-60
+            size: CGFloat.random(in: 10...80)  // 进一步扩大碎片大小范围：10-80
         )
         
         fragments.append(newFragment)
@@ -110,17 +141,38 @@ class GravityGameViewModel: ObservableObject {
         guard isGameRunning else { return }
         
         let deltaTime: Double = 1.0/60.0
-        let gravity = 1200.0 // 重力强度 - 调快掉落速度
-        let friction = 0.98 // 摩擦力
+        let gravity = 2000.0 // 重力强度 - 更接近真实重力
+        
+        // 重置压力和接触计数
+        for i in fragments.indices {
+            fragments[i].pressure = 0.0
+            fragments[i].contactCount = 0
+        }
+        
+        // 计算压力传导
+        calculatePressureDistribution()
         
         for i in fragments.indices {
-            // 应用重力
-            fragments[i].velocity.dx += gravityDirection.dx * gravity * deltaTime
-            fragments[i].velocity.dy += gravityDirection.dy * gravity * deltaTime
+            let fragment = fragments[i]
             
-            // 应用摩擦力
+            // 应用重力（考虑质量，但质量因子要合理）
+            let massFactor = 1.0 + (fragment.mass * 0.1) // 质量因子：1.0-2.0之间
+            fragments[i].velocity.dx += gravityDirection.dx * gravity * deltaTime * massFactor
+            fragments[i].velocity.dy += gravityDirection.dy * gravity * deltaTime * massFactor
+            
+            // 应用摩擦力（质量越大，摩擦力越大）
+            let friction = 0.98 - (massFactor * 0.01)
             fragments[i].velocity.dx *= friction
             fragments[i].velocity.dy *= friction
+            
+            // 当速度很小时，直接停止运动
+            let minVelocity: CGFloat = 5.0
+            if abs(fragments[i].velocity.dx) < minVelocity {
+                fragments[i].velocity.dx = 0
+            }
+            if abs(fragments[i].velocity.dy) < minVelocity {
+                fragments[i].velocity.dy = 0
+            }
             
             // 更新位置
             fragments[i].position.x += fragments[i].velocity.dx * deltaTime
@@ -160,6 +212,33 @@ class GravityGameViewModel: ObservableObject {
         }
     }
     
+    // MARK: - 压力传导系统
+    private func calculatePressureDistribution() {
+        // 简化压力传导，只计算接触计数
+        for i in fragments.indices {
+            var contactCount: Int = 0
+            
+            for j in fragments.indices {
+                if i == j { continue }
+                
+                let fragment1 = fragments[i]
+                let fragment2 = fragments[j]
+                let dx = fragment1.position.x - fragment2.position.x
+                let dy = fragment1.position.y - fragment2.position.y
+                let distance = sqrt(dx * dx + dy * dy)
+                let contactDistance = (fragment1.size + fragment2.size) / 2
+                
+                // 如果碎片接触
+                if distance < contactDistance {
+                    contactCount += 1
+                }
+            }
+            
+            // 更新接触计数
+            fragments[i].contactCount = contactCount
+        }
+    }
+    
     // MARK: - 碰撞检测
     private func checkCollisions() {
         for i in 0..<fragments.count {
@@ -175,7 +254,8 @@ class GravityGameViewModel: ObservableObject {
                 // 碰撞半径（两个碎片半径之和）
                 let collisionRadius = (fragment1.size + fragment2.size) / 2
                 
-                if distance < collisionRadius && distance > 0 {
+                // 更严格的碰撞检测，避免重叠
+                if distance < collisionRadius && distance > 0.01 {
                     // 发生碰撞
                     handleCollision(fragment1Index: i, fragment2Index: j, dx: dx, dy: dy, distance: distance)
                 }
@@ -203,30 +283,44 @@ class GravityGameViewModel: ObservableObject {
             return
         }
         
-        // 弹性碰撞系数 - 调小作用力度
-        let restitution = 0.1
+        // 获取质量
+        let mass1 = fragment1.mass
+        let mass2 = fragment2.mass
+        let totalMass = mass1 + mass2
         
-        // 计算碰撞冲量
-        let impulse = -(1 + restitution) * relativeSpeed
+        // 动态弹性系数（质量越大，弹性越小，整体降低碰撞力度）
+        let baseRestitution = 0.05  // 从0.1降低到0.05
+        let massRatio = min(mass1, mass2) / max(mass1, mass2)
+        let restitution = baseRestitution * (0.3 + massRatio * 0.7)  // 进一步降低
         
-        // 应用冲量到两个碎片
-        fragments[fragment1Index].velocity.dx += impulse * nx
-        fragments[fragment1Index].velocity.dy += impulse * ny
+        // 计算碰撞冲量（考虑质量和速度）
+        let impulse = -(1 + restitution) * relativeSpeed * (2 * mass1 * mass2) / totalMass
         
-        fragments[fragment2Index].velocity.dx -= impulse * nx
-        fragments[fragment2Index].velocity.dy -= impulse * ny
+        // 应用冲量到两个碎片（考虑质量比）
+        let impulse1 = impulse / mass1
+        let impulse2 = impulse / mass2
         
-        // 分离重叠的碎片
+        fragments[fragment1Index].velocity.dx += impulse1 * nx
+        fragments[fragment1Index].velocity.dy += impulse1 * ny
+        
+        fragments[fragment2Index].velocity.dx -= impulse2 * nx
+        fragments[fragment2Index].velocity.dy -= impulse2 * ny
+        
+        // 分离重叠的碎片（考虑质量比，确保完全分离）
         let overlap = (fragment1.size + fragment2.size) / 2 - distance
         if overlap > 0 {
-            let separationX = nx * overlap * 0.5
-            let separationY = ny * overlap * 0.5
+            let massRatio1 = mass2 / totalMass
+            let massRatio2 = mass1 / totalMass
+            
+            // 强制分离，确保不会重叠
+            let separationX = nx * (overlap + 1.0) * massRatio1
+            let separationY = ny * (overlap + 1.0) * massRatio1
             
             fragments[fragment1Index].position.x += separationX
             fragments[fragment1Index].position.y += separationY
             
-            fragments[fragment2Index].position.x -= separationX
-            fragments[fragment2Index].position.y -= separationY
+            fragments[fragment2Index].position.x -= nx * (overlap + 1.0) * massRatio2
+            fragments[fragment2Index].position.y -= ny * (overlap + 1.0) * massRatio2
         }
     }
     
