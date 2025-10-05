@@ -11,7 +11,8 @@ import SwiftUI
 struct OOOApp: App {
     var body: some Scene {
         WindowGroup {
-            ObservableObjectDemoView() // 演示 ObservableObject 知识点
+            GravityFragmentsGame()  // game
+//            ObservableObjectDemoView() // 演示 ObservableObject 知识点
             // ContentView() // 原始 @State & @Binding 演示
         }
     }
