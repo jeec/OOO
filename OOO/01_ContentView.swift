@@ -49,6 +49,14 @@ struct ContentView: View {
                 NavigationLink("🎯 FocusState演示") {
                     FocusStateDemoView()
                 }
+                
+                NavigationLink("🔄 StateObject vs ObservedObject") {
+                    StateObjectVsObservedObjectDemoView()
+                }
+                
+                NavigationLink("📢 @Published演示") {
+                    PublishedDemoView()
+                }
             }
             .navigationTitle("SwiftUI学习")
         }
