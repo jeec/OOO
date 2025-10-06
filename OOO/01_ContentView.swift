@@ -29,6 +29,18 @@ struct ContentView: View {
                 NavigationLink("🛡️ Guard语句演示") {
                     GuardDemoView()
                 }
+                
+                NavigationLink("📦 可选值解包演示") {
+                    OptionalDemoView()
+                }
+                
+                NavigationLink("🍎 Swift vs 🟢 Kotlin") {
+                    SwiftVsKotlinDemoView()
+                }
+                
+                NavigationLink("🌍 EnvironmentObject演示") {
+                    EnvironmentObjectDemoView()
+                }
             }
             .navigationTitle("SwiftUI学习")
         }

@@ -130,7 +130,7 @@ class GuardAdvancedDemo {
     
     // 2. 多个条件检查
     func multipleConditions(name: String?, age: Int?) {
-        guard let name = name, !name.isEmpty else {
+        guard let name = name, name.isEmpty else {
             print("姓名无效")
             return
         }
