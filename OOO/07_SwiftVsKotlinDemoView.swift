@@ -8,7 +8,8 @@ struct SwiftVsKotlinDemoView: View {
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 20) {
+            ScrollView {
+                VStack(spacing: 20) {
                 Text("🍎 Swift vs 🟢 Kotlin")
                     .font(.largeTitle)
                     .fontWeight(.bold)
@@ -76,8 +77,9 @@ struct SwiftVsKotlinDemoView: View {
                 .padding()
                 .background(Color.green.opacity(0.1))
                 .cornerRadius(8)
+                }
+                .padding()
             }
-            .padding()
             .navigationTitle("Swift vs Kotlin")
         }
     }

@@ -8,7 +8,8 @@ struct OptionalDemoView: View {
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 20) {
+            ScrollView {
+                VStack(spacing: 20) {
                 Text("📦 可选值解包演示")
                     .font(.largeTitle)
                     .fontWeight(.bold)
@@ -72,8 +73,9 @@ struct OptionalDemoView: View {
                 .padding()
                 .background(Color.green.opacity(0.1))
                 .cornerRadius(8)
+                }
+                .padding()
             }
-            .padding()
             .navigationTitle("可选值解包")
         }
     }

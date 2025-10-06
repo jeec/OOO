@@ -11,7 +11,8 @@ struct GuardDemoView: View {
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 20) {
+            ScrollView {
+                VStack(spacing: 20) {
                 Text("🛡️ Guard语句演示")
                     .font(.largeTitle)
                     .fontWeight(.bold)
@@ -57,8 +58,9 @@ struct GuardDemoView: View {
                 .padding()
                 .background(Color.blue.opacity(0.1))
                 .cornerRadius(8)
+                }
+                .padding()
             }
-            .padding()
             .navigationTitle("Guard演示")
             .alert("验证结果", isPresented: $showAlert) {
                 Button("确定") { }

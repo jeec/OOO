@@ -13,7 +13,8 @@ struct EnvironmentObjectDemoView: View {
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 20) {
+            ScrollView {
+                VStack(spacing: 20) {
                 Text("🌍 EnvironmentObject演示")
                     .font(.largeTitle)
                     .fontWeight(.bold)
@@ -32,8 +33,9 @@ struct EnvironmentObjectDemoView: View {
                     ChildView()
                 }
                 .buttonStyle(.borderedProminent)
+                }
+                .padding()
             }
-            .padding()
             .navigationTitle("EnvironmentObject")
         }
         .environmentObject(userData) // 注入环境对象

@@ -41,6 +41,10 @@ struct ContentView: View {
                 NavigationLink("🌍 EnvironmentObject演示") {
                     EnvironmentObjectDemoView()
                 }
+                
+                NavigationLink("💾 AppStorage演示") {
+                    AppStorageDemoView()
+                }
             }
             .navigationTitle("SwiftUI学习")
         }
