@@ -31,9 +31,9 @@ struct Fragment: Identifiable {
         self.velocity = CGVector(dx: Double.random(in: -50...50), dy: 0)
         self.color = color
         self.size = size
-        self.shape = FragmentShape.allCases.randomElement() ?? .circle
-        self.rotation = Double.random(in: 0...360)
-        self.rotationSpeed = Double.random(in: -180...180)
+        self.shape = FragmentShape.allCases.randomElement() ?? .cat
+        self.rotation = 0  // 初始不旋转
+        self.rotationSpeed = 0  // 初始无旋转速度
         
         // 根据大小计算质量（体积越大质量越大，但限制最大质量）
         let rawMass = size * size * size * 0.0001
@@ -41,35 +41,51 @@ struct Fragment: Identifiable {
     }
 }
 
-// MARK: - 碎片形状枚举
+// MARK: - 小动物形状枚举
 enum FragmentShape: CaseIterable {
-    case circle
-    case square
-    case triangle
-    case diamond
-    case star
-    case hexagon
-    case pentagon
-    case octagon
-    case heart
-    case cross
-    case arrow
-    case lightning
+    case cat
+    case dog
+    case rabbit
+    case bird
+    case fish
+    case butterfly
+    case bee
+    case ladybug
+    case frog
+    case turtle
+    case penguin
+    case owl
+    case fox
+    case bear
+    case panda
+    case monkey
+    case elephant
+    case lion
+    case tiger
+    case zebra
     
     var systemName: String {
         switch self {
-        case .circle: return "circle.fill"
-        case .square: return "square.fill"
-        case .triangle: return "triangle.fill"
-        case .diamond: return "diamond.fill"
-        case .star: return "star.fill"
-        case .hexagon: return "hexagon.fill"
-        case .pentagon: return "pentagon.fill"
-        case .octagon: return "octagon.fill"
-        case .heart: return "heart.fill"
-        case .cross: return "cross.fill"
-        case .arrow: return "arrow.up.fill"
-        case .lightning: return "bolt.fill"
+        case .cat: return "cat.fill"
+        case .dog: return "dog.fill"
+        case .rabbit: return "hare.fill"
+        case .bird: return "bird.fill"
+        case .fish: return "fish.fill"
+        case .butterfly: return "butterfly.fill"
+        case .bee: return "ant.fill"
+        case .ladybug: return "ladybug.fill"
+        case .frog: return "frog.fill"
+        case .turtle: return "tortoise.fill"
+        case .penguin: return "penguin.fill"
+        case .owl: return "owl.fill"
+        case .fox: return "fox.fill"
+        case .bear: return "bear.fill"
+        case .panda: return "panda.fill"
+        case .monkey: return "monkey.fill"
+        case .elephant: return "elephant.fill"
+        case .lion: return "lion.fill"
+        case .tiger: return "tiger.fill"
+        case .zebra: return "zebra.fill"
         }
     }
 }
@@ -87,14 +103,31 @@ class GravityGameViewModel: ObservableObject {
     
     // 颜色池
     private let colors: [Color] = [
+        // 基础颜色
         .red, .blue, .green, .yellow, .orange, .purple, .pink, .cyan, .mint, .indigo,
         .teal, .brown, .gray, .black, .white, .primary, .secondary,
-        Color(red: 0.8, green: 0.2, blue: 0.8), // 紫红色
-        Color(red: 0.2, green: 0.8, blue: 0.2), // 翠绿色
-        Color(red: 0.8, green: 0.8, blue: 0.2), // 金黄色
-        Color(red: 0.2, green: 0.2, blue: 0.8), // 深蓝色
-        Color(red: 0.8, green: 0.4, blue: 0.2), // 橙红色
-        Color(red: 0.4, green: 0.2, blue: 0.8)  // 深紫色
+        
+        // 动物主题颜色
+        Color(red: 1.0, green: 0.6, blue: 0.0),   // 橙色 - 老虎
+        Color(red: 0.8, green: 0.4, blue: 0.2),  // 棕色 - 熊
+        Color(red: 0.2, green: 0.6, blue: 0.8),  // 天蓝色 - 鸟
+        Color(red: 0.6, green: 0.8, blue: 0.2),  // 青绿色 - 青蛙
+        Color(red: 0.9, green: 0.7, blue: 0.3),  // 金黄色 - 狮子
+        Color(red: 0.4, green: 0.2, blue: 0.6),  // 紫色 - 蝴蝶
+        Color(red: 0.8, green: 0.2, blue: 0.2),  // 红色 - 瓢虫
+        Color(red: 0.2, green: 0.8, blue: 0.4),  // 翠绿色 - 青蛙
+        Color(red: 0.6, green: 0.4, blue: 0.8),  // 紫罗兰 - 企鹅
+        Color(red: 0.8, green: 0.8, blue: 0.2),  // 柠檬黄 - 蜜蜂
+        Color(red: 0.4, green: 0.6, blue: 0.8),  // 浅蓝色 - 鱼
+        Color(red: 0.8, green: 0.6, blue: 0.4),  // 桃色 - 兔子
+        Color(red: 0.6, green: 0.8, blue: 0.6),  // 薄荷绿 - 乌龟
+        Color(red: 0.8, green: 0.4, blue: 0.6),  // 粉紫色 - 猫
+        Color(red: 0.4, green: 0.8, blue: 0.8),  // 青色 - 狗
+        Color(red: 0.9, green: 0.5, blue: 0.1),  // 深橙色 - 狐狸
+        Color(red: 0.1, green: 0.3, blue: 0.7),   // 深蓝色 - 猫头鹰
+        Color(red: 0.7, green: 0.3, blue: 0.1),  // 深红色 - 大象
+        Color(red: 0.3, green: 0.7, blue: 0.3),  // 深绿色 - 猴子
+        Color(red: 0.5, green: 0.5, blue: 0.5)   // 灰色 - 熊猫
     ]
     
     init() {
@@ -160,13 +193,23 @@ class GravityGameViewModel: ObservableObject {
             fragments[i].velocity.dx += gravityDirection.dx * gravity * deltaTime * massFactor
             fragments[i].velocity.dy += gravityDirection.dy * gravity * deltaTime * massFactor
             
-            // 应用摩擦力（质量越大，摩擦力越大）
-            let friction = 0.98 - (massFactor * 0.01)
-            fragments[i].velocity.dx *= friction
-            fragments[i].velocity.dy *= friction
+            // 应用空气阻力和摩擦力（更真实的物理）
+            let airResistance = 0.995  // 空气阻力
+            let surfaceFriction = 0.99  // 表面摩擦力
             
-            // 当速度很小时，直接停止运动
-            let minVelocity: CGFloat = 5.0
+            // 基础阻力
+            fragments[i].velocity.dx *= airResistance
+            fragments[i].velocity.dy *= airResistance
+            
+            // 接触其他碎片时的额外摩擦力
+            if fragment.contactCount > 0 {
+                let contactFriction = pow(surfaceFriction, Double(fragment.contactCount))
+                fragments[i].velocity.dx *= contactFriction
+                fragments[i].velocity.dy *= contactFriction
+            }
+            
+            // 当速度很小时，直接停止运动（更严格的阈值）
+            let minVelocity: CGFloat = 1.0  // 降低阈值，更容易停止
             if abs(fragments[i].velocity.dx) < minVelocity {
                 fragments[i].velocity.dx = 0
             }
@@ -174,12 +217,29 @@ class GravityGameViewModel: ObservableObject {
                 fragments[i].velocity.dy = 0
             }
             
+            // 如果碎片完全停止，标记为稳定
+            if abs(fragments[i].velocity.dx) < 0.1 && abs(fragments[i].velocity.dy) < 0.1 {
+                fragments[i].isStable = true
+            } else {
+                fragments[i].isStable = false
+            }
+            
             // 更新位置
             fragments[i].position.x += fragments[i].velocity.dx * deltaTime
             fragments[i].position.y += fragments[i].velocity.dy * deltaTime
             
-            // 更新旋转
+            // 更新旋转（碰撞产生的自然旋转）
             fragments[i].rotation += fragments[i].rotationSpeed * deltaTime
+            
+            // 现实世界的旋转摩擦力（更快停止旋转）
+            let rotationFriction = 0.95  // 从0.99降低到0.95，更快停止旋转
+            fragments[i].rotationSpeed *= rotationFriction
+            
+            // 当旋转速度很小时，直接停止旋转（更严格的阈值）
+            let minRotationSpeed: Double = 0.1  // 从0.5降低到0.1，更容易停止
+            if abs(fragments[i].rotationSpeed) < minRotationSpeed {
+                fragments[i].rotationSpeed = 0
+            }
         }
         
         // 碎片间碰撞检测
@@ -288,10 +348,13 @@ class GravityGameViewModel: ObservableObject {
         let mass2 = fragment2.mass
         let totalMass = mass1 + mass2
         
-        // 动态弹性系数（质量越大，弹性越小，整体降低碰撞力度）
-        let baseRestitution = 0.05  // 从0.1降低到0.05
+        // 现实世界的弹性系数（极低弹性）
+        let baseRestitution = 0.002  // 从0.005降低到0.002，极低弹性
         let massRatio = min(mass1, mass2) / max(mass1, mass2)
-        let restitution = baseRestitution * (0.3 + massRatio * 0.7)  // 进一步降低
+        
+        // 如果两个碎片都稳定，碰撞力度更小
+        let stabilityFactor = (fragment1.isStable && fragment2.isStable) ? 0.01 : 1.0  // 稳定时极低弹性
+        let restitution = baseRestitution * (0.05 + massRatio * 0.95) * stabilityFactor  // 极低弹性
         
         // 计算碰撞冲量（考虑质量和速度）
         let impulse = -(1 + restitution) * relativeSpeed * (2 * mass1 * mass2) / totalMass
@@ -305,6 +368,24 @@ class GravityGameViewModel: ObservableObject {
         
         fragments[fragment2Index].velocity.dx -= impulse2 * nx
         fragments[fragment2Index].velocity.dy -= impulse2 * ny
+        
+        // 自然世界的旋转效果（更自然的旋转）
+        let rotationFactor = 0.02  // 降低旋转因子，让旋转更自然
+        let relativeRotation = relativeSpeed * rotationFactor
+        
+        // 基于碰撞角度的自然旋转
+        let collisionAngle = atan2(ny, nx)  // 碰撞角度
+        let angleFactor = abs(sin(collisionAngle * 2))  // 角度因子，让旋转更自然
+        
+        // 基于质量的旋转阻尼
+        let massDamping = min(mass1, mass2) / max(mass1, mass2)  // 质量比阻尼
+        
+        // 自然旋转计算
+        let naturalRotation = relativeRotation * angleFactor * massDamping
+        
+        // 应用旋转（更自然的分布）
+        fragments[fragment1Index].rotationSpeed += naturalRotation * (mass2 / totalMass) * 0.5
+        fragments[fragment2Index].rotationSpeed -= naturalRotation * (mass1 / totalMass) * 0.5
         
         // 分离重叠的碎片（考虑质量比，确保完全分离）
         let overlap = (fragment1.size + fragment2.size) / 2 - distance
@@ -420,12 +501,12 @@ struct GameControlPanel: View {
                 }
                 .buttonStyle(.borderedProminent)
                 
-                Button("清空") {
+                Button("🧹 清空小动物") {
                     viewModel.clearFragments()
                 }
                 .buttonStyle(.bordered)
                 
-                Button("添加碎片") {
+                Button("🐾 添加小动物") {
                     let randomX = CGFloat.random(in: 50...UIScreen.main.bounds.width - 50)
                     let randomY = CGFloat.random(in: 100...UIScreen.main.bounds.height - 150)  // 考虑安全区域
                     viewModel.addFragment(at: CGPoint(x: randomX, y: randomY))
@@ -489,7 +570,7 @@ struct GravityFragmentsGame: View {
         .onDisappear {
             viewModel.stopGame()
         }
-        .navigationTitle("重力碎片游戏")
+        .navigationTitle("🐾 小动物重力游戏")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {

@@ -9,14 +9,29 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var count = 0
-    
     @State private var count2 = 1
 
     var body: some View {
-        VStack(spacing: 16) {
-            CounterRow(count: $count, count2: $count2)
+        NavigationView {
+            List {
+                NavigationLink("🔄 ObservableObject演示") {
+                    ObservableObjectDemoView()
+                }
+                
+                NavigationLink("🔗 State & Binding演示") {
+                    StateBindingDemoView()
+                }
+                
+                NavigationLink("🐾 小动物重力游戏") {
+                    GravityFragmentsGame()
+                }
+                
+                NavigationLink("🛡️ Guard语句演示") {
+                    GuardDemoView()
+                }
+            }
+            .navigationTitle("SwiftUI学习")
         }
-        .padding()
     }
 }
 
