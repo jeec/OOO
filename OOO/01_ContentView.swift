@@ -45,6 +45,10 @@ struct ContentView: View {
                 NavigationLink("💾 AppStorage演示") {
                     AppStorageDemoView()
                 }
+                
+                NavigationLink("🎯 FocusState演示") {
+                    FocusStateDemoView()
+                }
             }
             .navigationTitle("SwiftUI学习")
         }
