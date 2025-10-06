@@ -57,6 +57,10 @@ struct ContentView: View {
                 NavigationLink("📢 @Published演示") {
                     PublishedDemoView()
                 }
+                
+                NavigationLink("🔄 @State vs @Binding") {
+                    StateVsBindingDemoView()
+                }
             }
             .navigationTitle("SwiftUI学习")
         }
