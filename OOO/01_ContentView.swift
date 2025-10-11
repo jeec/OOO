@@ -69,6 +69,18 @@ struct ContentView: View {
                 NavigationLink("🎯 状态管理三剑客") {
                     StateManagementDemoView()
                 }
+                
+                NavigationLink("🌍 @EnvironmentObject高级演示") {
+                    EnvironmentObjectAdvancedDemoView()
+                }
+                
+                NavigationLink("👆 @GestureState演示") {
+                    GestureStateDemoView()
+                }
+                
+                NavigationLink("📋 Protocol演示") {
+                    ProtocolDemoView()
+                }
             }
             .navigationTitle("SwiftUI学习")
         }
