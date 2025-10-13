@@ -82,9 +82,13 @@ struct ContentView: View {
                     ProtocolDemoView()
                 }
                 
-                NavigationLink("🔧 Extension演示") {
-                    ExtensionDemoView()
-                }
+                       NavigationLink("🔧 Extension演示") {
+                           ExtensionDemoView()
+                       }
+                       
+                       NavigationLink("💾 数据持久化演示") {
+                           DataPersistenceDemoView()
+                       }
             }
             .navigationTitle("SwiftUI学习")
         }
