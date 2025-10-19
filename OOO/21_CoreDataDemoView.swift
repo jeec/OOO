@@ -150,8 +150,15 @@ struct CoreDataDemoView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showAddUser) {
-                AddUserView()
+            .sheet(isPresented: $showAddUser, onDismiss: {
+                
+            }) {
+//                AddUserView()
+                VStack(spacing: 72) {
+                    Text("asdf>>>123 ")
+                    Text("asdf>>>123")
+                    Text("asdf>>>123")
+                }
             }
             .alert("提示", isPresented: $showAlert) {
                 Button("确定") { }

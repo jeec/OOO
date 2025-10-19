@@ -1,17 +1,11 @@
 import SwiftUI
+import Combine
 
 // MARK: - 英语学习应用主文件
-@main
-struct EnglishLearningApp: App {
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-        }
-    }
-}
+// 注意：这个文件不能有 @main，因为主项目已经有 @main
 
 // MARK: - 主界面
-struct ContentView: View {
+struct EnglishLearningContentView: View {
     @StateObject private var gameManager = GameManager()
     
     var body: some View {
@@ -78,7 +72,7 @@ struct ContentView: View {
                                 title: "🏆 成就中心",
                                 description: "查看成就",
                                 color: .purple,
-                                action: { gameManager.showAchievements() }
+                                action: { gameManager.openAchievements() }
                             )
                         }
                     }
@@ -91,7 +85,7 @@ struct ContentView: View {
         }
         .sheet(isPresented: $gameManager.showGame) {
             if let gameType = gameManager.currentGameType {
-                GameView(gameType: gameType, gameManager: gameManager)
+                EnglishGameView(gameType: gameType, gameManager: gameManager)
             }
         }
         .sheet(isPresented: $gameManager.showAchievements) {
@@ -224,7 +218,7 @@ class GameManager: ObservableObject {
         showGame = true
     }
     
-    func showAchievements() {
+    func openAchievements() {
         showAchievements = true
     }
     
@@ -267,7 +261,7 @@ struct Word: Identifiable, Codable {
 }
 
 // MARK: - 游戏视图
-struct GameView: View {
+struct EnglishGameView: View {
     let gameType: GameType
     let gameManager: GameManager
     @Environment(\.dismiss) private var dismiss
@@ -806,5 +800,5 @@ struct AchievementItem: View {
 }
 
 #Preview {
-    ContentView()
+    EnglishLearningContentView()
 }
