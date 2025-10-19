@@ -89,6 +89,10 @@ struct ContentView: View {
                        NavigationLink("💾 数据持久化演示") {
                            DataPersistenceDemoView()
                        }
+                       
+                       NavigationLink("🗄️ Core Data演示") {
+                           CoreDataDemoView()
+                       }
             }
             .navigationTitle("SwiftUI学习")
         }
