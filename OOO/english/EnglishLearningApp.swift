@@ -81,7 +81,7 @@ struct EnglishLearningContentView: View {
                     Spacer()
                 }
             }
-            .navigationBarHidden(true)
+            .navigationBarHidden(false)
         }
         .sheet(isPresented: $gameManager.showGame) {
             if let gameType = gameManager.currentGameType {
