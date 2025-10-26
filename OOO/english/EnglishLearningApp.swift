@@ -6,91 +6,40 @@ import Combine
 
 // MARK: - 主界面
 struct EnglishLearningContentView: View {
-    @StateObject private var gameManager = GameManager()
+    @EnvironmentObject private var userService: UserService
+    @EnvironmentObject private var wordService: WordService
+    @State private var refreshID = UUID()
     
     var body: some View {
-        NavigationView {
-            ZStack {
-                // 背景渐变
-                LinearGradient(
-                    colors: [Color.blue.opacity(0.1), Color.purple.opacity(0.1)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
-                
-                VStack(spacing: 30) {
-                    // 标题
-                    VStack(spacing: 10) {
-                        Text("🎓 英语学习乐园")
-                            .font(.largeTitle)
-                            .fontWeight(.bold)
-                            .foregroundColor(.primary)
-                        
-                        Text("让学习变得有趣！")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
+        ZStack {
+            if userService.isLoggedIn {
+                MainTabView()
+                    .id(refreshID)
+                    .onAppear {
+                        print("MainTabView appeared - isLoggedIn: \(userService.isLoggedIn)")
                     }
-                    .padding(.top, 20)
-                    
-                    // 用户统计
-                    UserStatsView(gameManager: gameManager)
-                    
-                    // 游戏模式选择
-                    VStack(spacing: 20) {
-                        Text("选择学习模式")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.primary)
-                        
-                        LazyVGrid(columns: [
-                            GridItem(.flexible()),
-                            GridItem(.flexible())
-                        ], spacing: 20) {
-                            GameModeCard(
-                                title: "📚 单词卡片",
-                                description: "记忆单词",
-                                color: .blue,
-                                action: { gameManager.startCardGame() }
-                            )
-                            
-                            GameModeCard(
-                                title: "✍️ 单词拼写",
-                                description: "练习拼写",
-                                color: .green,
-                                action: { gameManager.startSpellingGame() }
-                            )
-                            
-                            GameModeCard(
-                                title: "🎯 单词匹配",
-                                description: "配对游戏",
-                                color: .orange,
-                                action: { gameManager.startMatchingGame() }
-                            )
-                            
-                            GameModeCard(
-                                title: "🏆 成就中心",
-                                description: "查看成就",
-                                color: .purple,
-                                action: { gameManager.openAchievements() }
-                            )
-                        }
+                    .transition(.opacity.combined(with: .scale))
+            } else {
+                LoginView()
+                    .onAppear {
+                        print("LoginView appeared - isLoggedIn: \(userService.isLoggedIn)")
                     }
-                    .padding(.horizontal)
-                    
-                    Spacer()
-                }
-            }
-            .navigationBarHidden(false)
-        }
-        .sheet(isPresented: $gameManager.showGame) {
-            if let gameType = gameManager.currentGameType {
-                EnglishGameView(gameType: gameType, gameManager: gameManager)
+                    .transition(.opacity.combined(with: .scale))
             }
         }
-        .sheet(isPresented: $gameManager.showAchievements) {
-            AchievementsView(gameManager: gameManager)
+        .onAppear {
+            // 检查用户登录状态
+            print("EnglishLearningContentView onAppear - isLoggedIn: \(userService.isLoggedIn)")
+            userService.updateStreak()
         }
+        .onChange(of: userService.isLoggedIn) { newValue in
+            print("isLoggedIn changed to: \(newValue)")
+            if newValue {
+                refreshID = UUID()
+                print("强制刷新 MainTabView")
+            }
+        }
+        .animation(.easeInOut(duration: 0.5), value: userService.isLoggedIn)
     }
 }
 
@@ -204,16 +153,19 @@ class GameManager: ObservableObject {
     @Published var gameLevel = 1
     
     func startCardGame() {
+        resetGame()
         currentGameType = .cardGame
         showGame = true
     }
     
     func startSpellingGame() {
+        resetGame()
         currentGameType = .spellingGame
         showGame = true
     }
     
     func startMatchingGame() {
+        resetGame()
         currentGameType = .matchingGame
         showGame = true
     }
@@ -230,6 +182,12 @@ class GameManager: ObservableObject {
     func completeWord() {
         learnedWords += 1
     }
+    
+    func resetGame() {
+        gameScore = 0
+        currentWord = nil
+        gameLevel = 1
+    }
 }
 
 // MARK: - 游戏类型枚举
@@ -239,26 +197,7 @@ enum GameType {
     case matchingGame
 }
 
-// MARK: - 单词模型
-struct Word: Identifiable, Codable {
-    let id = UUID()
-    let english: String
-    let chinese: String
-    let pronunciation: String
-    let difficulty: Int // 1-5 难度等级
-    let category: String
-    
-    static let sampleWords = [
-        Word(english: "Apple", chinese: "苹果", pronunciation: "/ˈæpəl/", difficulty: 1, category: "水果"),
-        Word(english: "Book", chinese: "书", pronunciation: "/bʊk/", difficulty: 1, category: "学习"),
-        Word(english: "Cat", chinese: "猫", pronunciation: "/kæt/", difficulty: 1, category: "动物"),
-        Word(english: "Dog", chinese: "狗", pronunciation: "/dɔːɡ/", difficulty: 1, category: "动物"),
-        Word(english: "Elephant", chinese: "大象", pronunciation: "/ˈeləfənt/", difficulty: 2, category: "动物"),
-        Word(english: "Beautiful", chinese: "美丽的", pronunciation: "/ˈbjuːtɪfəl/", difficulty: 3, category: "形容词"),
-        Word(english: "Adventure", chinese: "冒险", pronunciation: "/ədˈventʃər/", difficulty: 4, category: "名词"),
-        Word(english: "Magnificent", chinese: "壮丽的", pronunciation: "/mæɡˈnɪfɪsənt/", difficulty: 5, category: "形容词")
-    ]
-}
+// MARK: - 旧单词模型已移至WordModel.swift
 
 // MARK: - 游戏视图
 struct EnglishGameView: View {
@@ -324,7 +263,7 @@ struct CardGameView: View {
     @State private var showAnswer = false
     @State private var isFlipped = false
     
-    private let words = Word.sampleWords.shuffled()
+    private let words: [Word] = []
     
     var body: some View {
         VStack(spacing: 30) {
@@ -418,6 +357,10 @@ struct CardGameView: View {
         if currentIndex < words.count - 1 {
             currentIndex += 1
             isFlipped = false
+        } else {
+            // 游戏结束，重置游戏状态
+            currentIndex = 0
+            isFlipped = false
         }
     }
 }
@@ -430,7 +373,7 @@ struct SpellingGameView: View {
     @State private var showResult = false
     @State private var isCorrect = false
     
-    private let words = Word.sampleWords.shuffled()
+    private let words: [Word] = []
     
     var body: some View {
         VStack(spacing: 30) {
@@ -529,6 +472,11 @@ struct SpellingGameView: View {
             currentIndex += 1
             userInput = ""
             showResult = false
+        } else {
+            // 游戏结束，重置游戏状态
+            currentIndex = 0
+            userInput = ""
+            showResult = false
         }
     }
 }
@@ -589,7 +537,7 @@ struct MatchingGameView: View {
     }
     
     private func setupGame() {
-        let selectedWords = Array(Word.sampleWords.prefix(6))
+        let selectedWords: [Word] = []
         gameWords = selectedWords.flatMap { word in
             [
                 GameWord(text: word.english, type: .english, originalWord: word),

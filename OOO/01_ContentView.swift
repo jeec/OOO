@@ -96,6 +96,8 @@ struct ContentView: View {
                 
                 NavigationLink("🎓 英语学习乐园") {
                     EnglishLearningContentView()
+                        .environmentObject(UserService())
+                        .environmentObject(WordService())
                 }
             }
             .navigationTitle("SwiftUI学习")
