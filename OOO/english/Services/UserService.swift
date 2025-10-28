@@ -3,6 +3,7 @@ import SwiftUI
 import Combine
 
 // MARK: - 用户服务
+@MainActor
 class UserService: ObservableObject {
     @Published var currentUser: User?
     @Published var isLoggedIn: Bool = false
@@ -29,13 +30,11 @@ class UserService: ObservableObject {
         // 简单的本地验证（实际应用中应该连接服务器）
         if email == "test@example.com" && password == "123456" {
             let user = User(username: "测试用户", email: email)
-            await MainActor.run {
-                print("设置登录状态前 - isLoggedIn: \(self.isLoggedIn)")
-                self.currentUser = user
-                self.isLoggedIn = true
-                print("设置登录状态后 - isLoggedIn: \(self.isLoggedIn)")
-                self.saveUser(user)
-            }
+            print("设置登录状态前 - isLoggedIn: \(self.isLoggedIn)")
+            self.currentUser = user
+            self.isLoggedIn = true
+            print("设置登录状态后 - isLoggedIn: \(self.isLoggedIn)")
+            self.saveUser(user)
             return .success(user)
         } else {
             return .failure(.invalidCredentials)
@@ -52,11 +51,9 @@ class UserService: ObservableObject {
         // 简单的本地验证
         if email.contains("@") && password.count >= 6 {
             let user = User(username: username, email: email)
-            await MainActor.run {
-                self.currentUser = user
-                self.isLoggedIn = true
-                self.saveUser(user)
-            }
+            self.currentUser = user
+            self.isLoggedIn = true
+            self.saveUser(user)
             return .success(user)
         } else {
             return .failure(.invalidInput)

@@ -300,7 +300,7 @@ struct StudyGameView: View {
             VStack {
                 if words.isEmpty {
                     VStack {
-                        ProgressView()
+                        SwiftUI.ProgressView()
                         Text("加载中...")
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)

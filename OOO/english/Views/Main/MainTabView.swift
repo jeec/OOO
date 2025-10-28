@@ -25,7 +25,7 @@ struct MainTabView: View {
                 .tag(1)
             
             // 进度统计
-            ProgressView()
+            LearningProgressView()
                 .tabItem {
                     Image(systemName: "chart.bar.fill")
                     Text("进度")
@@ -129,7 +129,8 @@ struct WelcomeSection: View {
             // 用户等级
             if let user = userService.currentUser {
                 let levelInfo = UserLevel.getLevelInfo(for: user.totalXP)
-                
+                let progress = min(max(levelInfo.progress, 0.0), 1.0)
+
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Text("等级 \(levelInfo.level) - \(levelInfo.title)")
@@ -143,7 +144,7 @@ struct WelcomeSection: View {
                             .foregroundColor(.secondary)
                     }
                     
-                        ProgressView()
+                    SwiftUI.ProgressView(value: progress)
                         .progressViewStyle(LinearProgressViewStyle(tint: .blue))
                         .scaleEffect(x: 1, y: 2, anchor: .center)
                 }

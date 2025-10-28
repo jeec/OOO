@@ -65,7 +65,7 @@ struct LoginView: View {
                         Button(action: login) {
                             HStack {
                                 if userService.isLoading {
-                                    ProgressView()
+                                    SwiftUI.ProgressView()
                                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
                                         .scaleEffect(0.8)
                                 } else {
@@ -244,9 +244,9 @@ struct RegisterView: View {
                         Button(action: register) {
                             HStack {
                                 if userService.isLoading {
-                                    ProgressView()
-                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                        .scaleEffect(0.8)
+                        SwiftUI.ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .scaleEffect(0.8)
                                 } else {
                                     Text("注册")
                                         .font(.headline)

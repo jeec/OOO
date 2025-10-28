@@ -1,7 +1,7 @@
 import SwiftUI
 
 // MARK: - 进度视图
-struct ProgressView: View {
+struct LearningProgressView: View {
     @EnvironmentObject var userService: UserService
     @State private var selectedTimeRange: TimeRange = .week
     
@@ -82,7 +82,8 @@ struct LearningStatsCard: View {
             
             if let user = userService.currentUser {
                 let levelInfo = UserLevel.getLevelInfo(for: user.totalXP)
-                
+                let levelProgress = min(max(levelInfo.progress, 0.0), 1.0)
+
                 VStack(spacing: 15) {
                     // 等级进度
                     VStack(alignment: .leading, spacing: 8) {
@@ -102,8 +103,7 @@ struct LearningStatsCard: View {
                         Text(levelInfo.title)
                             .font(.subheadline)
                             .foregroundColor(.secondary)
-                        
-                        ProgressView()
+                        SwiftUI.ProgressView(value: levelProgress)
                             .progressViewStyle(LinearProgressViewStyle(tint: .blue))
                             .scaleEffect(x: 1, y: 2, anchor: .center)
                         
@@ -181,6 +181,9 @@ struct ProgressChartCard: View {
                 .foregroundColor(.primary)
             
             if let user = userService.currentUser {
+                let completedWords = min(5, user.learningGoals.dailyWords)
+                let dailyGoal = max(user.learningGoals.dailyWords, 1)
+
                 VStack(spacing: 15) {
                     // 模拟进度图表
                     HStack(alignment: .bottom, spacing: 8) {
@@ -220,7 +223,10 @@ struct ProgressChartCard: View {
                                 .foregroundColor(.blue)
                         }
                         
-                        ProgressView()
+                        SwiftUI.ProgressView(
+                            value: Double(completedWords),
+                            total: Double(dailyGoal)
+                        )
                             .progressViewStyle(LinearProgressViewStyle(tint: .blue))
                             .scaleEffect(x: 1, y: 2, anchor: .center)
                     }
@@ -398,6 +404,6 @@ struct LearningTipItem: View {
 }
 
 #Preview {
-    ProgressView()
+    LearningProgressView()
         .environmentObject(UserService())
 }

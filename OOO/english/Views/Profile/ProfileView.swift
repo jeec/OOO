@@ -96,7 +96,8 @@ struct UserInfoCard: View {
             // 等级进度
             if let user = userService.currentUser {
                 let levelInfo = UserLevel.getLevelInfo(for: user.totalXP)
-                
+                let levelProgress = min(max(levelInfo.progress, 0.0), 1.0)
+
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Text("等级进度")
@@ -110,7 +111,7 @@ struct UserInfoCard: View {
                             .foregroundColor(.secondary)
                     }
                     
-                    ProgressView()
+                    SwiftUI.ProgressView(value: levelProgress)
                         .progressViewStyle(LinearProgressViewStyle(tint: .blue))
                         .scaleEffect(x: 1, y: 2, anchor: .center)
                 }
@@ -382,7 +383,7 @@ struct GoalItem: View {
                     .foregroundColor(.secondary)
             }
             
-            ProgressView()
+            SwiftUI.ProgressView(value: progress)
                 .progressViewStyle(LinearProgressViewStyle(tint: color))
                 .scaleEffect(x: 1, y: 1.5, anchor: .center)
         }
