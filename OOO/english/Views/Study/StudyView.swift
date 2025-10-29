@@ -293,40 +293,46 @@ struct StudyGameView: View {
     @State private var words: [Word] = []
     @State private var currentIndex = 0
     @State private var score = 0
-    @State private var showResult = false
+    @State private var wordStartTime = Date()
+    
+    private var currentWord: Word? {
+        guard currentIndex < words.count else { return nil }
+        return words[currentIndex]
+    }
+    
+    private var studyType: StudyType {
+        switch mode {
+        case .cardGame: return .recognition
+        case .spellingGame: return .spelling
+        case .matchingGame: return .matching
+        case .listeningGame: return .listening
+        }
+    }
     
     var body: some View {
         NavigationView {
             VStack {
                 if words.isEmpty {
-                    VStack {
+                    VStack(spacing: 12) {
                         SwiftUI.ProgressView()
-                        Text("加载中...")
+                        Text("正在加载练习...")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if currentIndex < words.count {
-                    switch mode {
-                    case .cardGame:
-                        SimpleCardGameView(word: words[currentIndex])
-                    case .spellingGame:
-                        SimpleSpellingGameView(word: words[currentIndex])
-                    case .matchingGame:
-                        SimpleMatchingGameView(words: Array(words.prefix(6)))
-                    case .listeningGame:
-                        SimpleCardGameView(word: words[currentIndex])
-                    }
+                } else if let word = currentWord {
+                    content(for: word)
                 } else {
-                    // 游戏结束
-                    GameCompleteView(score: score, totalWords: words.count)
+                    GameCompleteView(score: score, totalWords: words.count) {
+                        dismiss()
+                    }
                 }
             }
             .navigationTitle(mode.rawValue)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("退出") {
-                        dismiss()
-                    }
+                    Button("退出") { dismiss() }
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -335,16 +341,82 @@ struct StudyGameView: View {
                 }
             }
         }
-        .onAppear {
-            loadWords()
+        .onAppear(perform: loadWords)
+    }
+    
+    @ViewBuilder
+    private func content(for word: Word) -> some View {
+        switch mode {
+        case .cardGame, .listeningGame:
+            SimpleCardGameView(
+                word: word,
+                mode: mode,
+                onRemember: { handleAnswer(isCorrect: true) },
+                onRetry: { handleAnswer(isCorrect: false) }
+            )
+        case .spellingGame:
+            SimpleSpellingGameView(
+                word: word,
+                onAnswer: { handleAnswer(isCorrect: $0) }
+            )
+        case .matchingGame:
+            SimpleMatchingGameView(
+                word: word,
+                options: matchingOptions(for: word),
+                onAnswer: { handleAnswer(isCorrect: $0) }
+            )
         }
     }
     
     private func loadWords() {
-        words = wordService.getWords(by: category, difficulty: difficulty)
-        if words.isEmpty {
-            words = wordService.getWords(difficulty: difficulty)
+        var selected = wordService.getWords(by: category, difficulty: difficulty)
+        if selected.isEmpty {
+            selected = wordService.getWords(difficulty: difficulty)
         }
+        if selected.isEmpty {
+            selected = wordService.words
+        }
+        words = Array(selected.shuffled().prefix(mode == .matchingGame ? 8 : 10))
+        currentIndex = 0
+        score = 0
+        wordStartTime = Date()
+    }
+    
+    private func matchingOptions(for word: Word) -> [Word] {
+        var options: [Word] = [word]
+        let candidates = wordService.words.filter { $0.id != word.id }.shuffled()
+        for candidate in candidates {
+            if options.count >= 4 { break }
+            options.append(candidate)
+        }
+        return options.shuffled()
+    }
+    
+    private func handleAnswer(isCorrect: Bool) {
+        guard currentIndex < words.count else { return }
+        let elapsed = max(Int(Date().timeIntervalSince(wordStartTime)), 1)
+        let word = words[currentIndex]
+        
+        if let user = userService.currentUser {
+            wordService.recordStudySession(
+                wordId: word.id,
+                userId: user.id,
+                studyType: studyType,
+                isCorrect: isCorrect,
+                timeSpent: elapsed,
+                difficulty: word.difficulty
+            )
+            userService.recordStudySession(for: word, isCorrect: isCorrect, timeSpent: elapsed)
+        }
+        
+        if isCorrect {
+            score += 10
+        } else {
+            score = max(0, score - 2)
+        }
+        
+        currentIndex += 1
+        wordStartTime = Date()
     }
 }
 
@@ -352,7 +424,7 @@ struct StudyGameView: View {
 struct GameCompleteView: View {
     let score: Int
     let totalWords: Int
-    @Environment(\.dismiss) private var dismiss
+    let onFinish: () -> Void
     
     var body: some View {
         VStack(spacing: 30) {
@@ -376,7 +448,7 @@ struct GameCompleteView: View {
             }
             
             Button("继续学习") {
-                dismiss()
+                onFinish()
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
@@ -388,50 +460,94 @@ struct GameCompleteView: View {
 // MARK: - 简单游戏视图
 struct SimpleCardGameView: View {
     let word: Word
+    let mode: StudyMode
+    let onRemember: () -> Void
+    let onRetry: () -> Void
     @State private var isFlipped = false
+    @State private var hasAnswered = false
     
     var body: some View {
-        VStack(spacing: 30) {
-            Text("单词卡片")
+        VStack(spacing: 24) {
+            Text(mode == .listeningGame ? "听力训练" : "单词卡片")
                 .font(.title)
                 .fontWeight(.bold)
             
-            Button(action: { isFlipped.toggle() }) {
-                VStack(spacing: 20) {
-                    if isFlipped {
-                        Text(word.chinese)
-                            .font(.largeTitle)
-                            .fontWeight(.bold)
-                            .foregroundColor(.blue)
-                    } else {
-                        Text(word.english)
-                            .font(.largeTitle)
-                            .fontWeight(.bold)
-                            .foregroundColor(.primary)
-                    }
+            VStack(spacing: 16) {
+                Text(word.english)
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
+                
+                if mode == .listeningGame {
+                    Text(word.pronunciation)
+                        .font(.title3)
+                        .foregroundColor(.blue)
+                    Text(word.phonetic)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
                 }
-                .frame(maxWidth: .infinity)
-                .frame(height: 200)
-                .background(Color.gray.opacity(0.1))
-                .cornerRadius(20)
+                
+                if isFlipped {
+                    Text(word.chinese)
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.blue)
+                        .transition(.opacity)
+                }
             }
-            .buttonStyle(PlainButtonStyle())
+            .frame(maxWidth: .infinity)
+            .frame(height: 220)
+            .background(Color.gray.opacity(0.1))
+            .cornerRadius(20)
+            .onTapGesture {
+                withAnimation { isFlipped.toggle() }
+            }
             
-            Text("点击翻转")
-                .font(.caption)
-                .foregroundColor(.secondary)
+            Button(isFlipped ? "隐藏释义" : "显示释义") {
+                withAnimation { isFlipped.toggle() }
+            }
+            .buttonStyle(.bordered)
+            
+            HStack(spacing: 20) {
+                Button("再练练") {
+                    guard !hasAnswered else { return }
+                    hasAnswered = true
+                    onRetry()
+                }
+                .buttonStyle(.bordered)
+                
+                Button("掌握了") {
+                    guard !hasAnswered else { return }
+                    hasAnswered = true
+                    onRemember()
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .disabled(hasAnswered)
+            
+            if hasAnswered {
+                Text("答案已记录，继续加油！")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
         }
         .padding()
+        .onChange(of: word.id) { _ in
+            isFlipped = false
+            hasAnswered = false
+        }
     }
 }
 
 struct SimpleSpellingGameView: View {
     let word: Word
+    let onAnswer: (Bool) -> Void
     @State private var userInput = ""
     @State private var showResult = false
+    @State private var isCorrect = false
     
     var body: some View {
-        VStack(spacing: 30) {
+        VStack(spacing: 24) {
             Text("拼写练习")
                 .font(.title)
                 .fontWeight(.bold)
@@ -444,63 +560,116 @@ struct SimpleSpellingGameView: View {
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .font(.title2)
                 .multilineTextAlignment(.center)
+                .textInputAutocapitalization(.never)
+                .disableAutocorrection(true)
             
             Button("检查") {
+                guard !showResult else { return }
+                let trimmed = userInput.trimmingCharacters(in: .whitespacesAndNewlines)
+                isCorrect = trimmed.lowercased() == word.english.lowercased()
                 showResult = true
             }
             .buttonStyle(.borderedProminent)
-            .disabled(userInput.isEmpty)
+            .disabled(userInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || showResult)
             
             if showResult {
-                Text(userInput.lowercased() == word.english.lowercased() ? "正确！" : "错误")
+                Text(isCorrect ? "正确！" : "再试一次！")
                     .font(.headline)
-                    .foregroundColor(userInput.lowercased() == word.english.lowercased() ? .green : .red)
+                    .foregroundColor(isCorrect ? .green : .red)
+                
+                Button("下一题") {
+                    onAnswer(isCorrect)
+                    resetState()
+                }
+                .buttonStyle(.bordered)
             }
         }
         .padding()
+        .onChange(of: word.id) { _ in
+            resetState()
+        }
+    }
+    
+    private func resetState() {
+        userInput = ""
+        showResult = false
+        isCorrect = false
     }
 }
 
 struct SimpleMatchingGameView: View {
-    let words: [Word]
-    @State private var selectedWords: [Word] = []
-    @State private var matchedPairs = 0
+    let word: Word
+    let options: [Word]
+    let onAnswer: (Bool) -> Void
+    @State private var selectedOption: UUID?
+    @State private var hasAnswered = false
+    @State private var isCorrect = false
     
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 24) {
             Text("单词匹配")
                 .font(.title)
                 .fontWeight(.bold)
             
-            Text("已匹配: \(matchedPairs) / \(words.count)")
-                .font(.headline)
+            Text("请选择正确的中文释义")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
             
-            LazyVGrid(columns: [
-                GridItem(.flexible()),
-                GridItem(.flexible())
-            ], spacing: 15) {
-                ForEach(words) { word in
-                    Button(action: {
-                        if !selectedWords.contains(where: { $0.id == word.id }) {
-                            selectedWords.append(word)
-                        }
-                    }) {
-                        VStack {
-                            Text(word.english)
-                                .font(.headline)
-                            Text(word.chinese)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+            VStack(spacing: 12) {
+                Text(word.english)
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                
+                ForEach(options, id: \.id) { option in
+                    Button {
+                        guard !hasAnswered else { return }
+                        selectedOption = option.id
+                        isCorrect = option.id == word.id
+                        hasAnswered = true
+                    } label: {
+                        HStack {
+                            Text(option.chinese)
+                                .font(.body)
+                                .foregroundColor(.primary)
+                            Spacer()
+                            if hasAnswered && selectedOption == option.id {
+                                Image(systemName: isCorrect ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                    .foregroundColor(isCorrect ? .green : .red)
+                            }
                         }
                         .padding()
-                        .background(Color.blue.opacity(0.1))
-                        .cornerRadius(10)
+                        .background(Color.blue.opacity(selectedOption == option.id ? 0.2 : 0.1))
+                        .cornerRadius(12)
                     }
-                    .buttonStyle(PlainButtonStyle())
+                    .disabled(hasAnswered && selectedOption != option.id)
                 }
+            }
+            .padding()
+            .background(Color.gray.opacity(0.1))
+            .cornerRadius(16)
+            
+            if hasAnswered {
+                Text(isCorrect ? "太棒了！" : "再接再厉！")
+                    .font(.headline)
+                    .foregroundColor(isCorrect ? .green : .red)
+                
+                Button("下一题") {
+                    onAnswer(isCorrect)
+                    resetState()
+                }
+                .buttonStyle(.bordered)
             }
         }
         .padding()
+        .onChange(of: word.id) { _ in
+            resetState()
+        }
+    }
+    
+    private func resetState() {
+        selectedOption = nil
+        hasAnswered = false
+        isCorrect = false
     }
 }
 

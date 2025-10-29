@@ -1,17 +1,20 @@
 import SwiftUI
 
-// MARK: - 口语练习入口
-struct EnglishLearningContentView: View {
+struct ContentView: View {
+    @EnvironmentObject private var userService: UserService
     @EnvironmentObject private var speakingService: SpeakingPracticeService
+    @EnvironmentObject private var wordService: WordService
     
     var body: some View {
         SpeakingPracticeHomeView()
-            .onAppear { speakingService.refreshFeaturedPhrase() }
+            .environmentObject(userService)
+            .environmentObject(speakingService)
+            .environmentObject(wordService)
     }
 }
 
 #Preview {
-    EnglishLearningContentView()
+    ContentView()
         .environmentObject(UserService())
         .environmentObject(SpeakingPracticeService())
         .environmentObject(WordService())

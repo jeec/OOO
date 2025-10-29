@@ -153,7 +153,7 @@ struct LearningRecord: Identifiable, Codable {
     let masteryLevel: MasteryLevel
     
     init(wordId: UUID, userId: UUID, studyType: StudyType, isCorrect: Bool, 
-         timeSpent: Int, difficulty: WordDifficulty) {
+         timeSpent: Int, difficulty: WordDifficulty, masteryLevel: MasteryLevel = .new) {
         self.id = UUID()
         self.wordId = wordId
         self.userId = userId
@@ -162,7 +162,7 @@ struct LearningRecord: Identifiable, Codable {
         self.isCorrect = isCorrect
         self.timeSpent = timeSpent
         self.difficulty = difficulty
-        self.masteryLevel = .new
+        self.masteryLevel = masteryLevel
     }
 }
 

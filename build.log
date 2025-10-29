@@ -1,0 +1,35 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -scheme OOO -destination generic/platform=iOS build
+
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (1 target)
+    Target 'OOO' in project 'OOO' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --print-asset-tag-combinations --output-format xml1 /Users/jiyongchun/xcode_projects/OOO/OOO/Assets.xcassets
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --version --output-format xml1
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+Build description signature: 98530bc3e4710fde1f6e0f0500ed1466
+Build description path: /Users/jiyongchun/Library/Developer/Xcode/DerivedData/OOO-cpvumrttsjonvcaskmrgnciusxtq/Build/Intermediates.noindex/XCBuildData/98530bc3e4710fde1f6e0f0500ed1466.xcbuilddata
+/Users/jiyongchun/xcode_projects/OOO/OOO.xcodeproj: error: Provisioning profile "iOS Team Provisioning Profile: com.ooo.joke.OOO" doesn't include the com.apple.developer.speech-recognition entitlement. (in target 'OOO' from project 'OOO')

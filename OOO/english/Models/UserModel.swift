@@ -59,6 +59,7 @@ struct StudyStats: Codable {
     var longestStreak: Int
     var weeklyProgress: [Int] // 7天的学习进度
     var monthlyProgress: [Int] // 30天的学习进度
+    var lastStudyDate: Date?
     
     init() {
         self.totalWordsLearned = 0
@@ -69,6 +70,7 @@ struct StudyStats: Codable {
         self.longestStreak = 0
         self.weeklyProgress = Array(repeating: 0, count: 7)
         self.monthlyProgress = Array(repeating: 0, count: 30)
+        self.lastStudyDate = nil
     }
     
     var accuracy: Double {

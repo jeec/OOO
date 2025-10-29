@@ -23,16 +23,16 @@ struct LoginView: View {
                 VStack(spacing: 30) {
                     // Logo 和标题
                     VStack(spacing: 20) {
-                        Image(systemName: "book.fill")
+                        Image(systemName: "mic.circle.fill")
                             .font(.system(size: 60))
                             .foregroundColor(.blue)
                         
-                        Text("英语学习乐园")
+                        Text("口语练习室")
                             .font(.largeTitle)
                             .fontWeight(.bold)
                             .foregroundColor(.primary)
                         
-                        Text("让学习变得有趣")
+                        Text("随时随地练就地道英语口语")
                             .font(.headline)
                             .foregroundColor(.secondary)
                     }

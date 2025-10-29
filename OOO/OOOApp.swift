@@ -9,9 +9,16 @@ import SwiftUI
 
 @main
 struct OOOApp: App {
+    @StateObject private var userService = UserService()
+    @StateObject private var speakingService = SpeakingPracticeService()
+    @StateObject private var wordService = WordService()
+    
     var body: some Scene {
         WindowGroup {
-             ContentView() // 原始 @State & @Binding 演示
+            ContentView()
+                .environmentObject(userService)
+                .environmentObject(speakingService)
+                .environmentObject(wordService)
         }
     }
 }

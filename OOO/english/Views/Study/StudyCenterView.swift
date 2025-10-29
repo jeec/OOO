@@ -474,6 +474,28 @@ struct ReviewStatsCard: View {
     }
 }
 
+private struct StatItem: View {
+    let title: String
+    let value: String
+    let color: Color
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            Text(value)
+                .font(.title3)
+                .fontWeight(.semibold)
+                .foregroundColor(color)
+            Text(title)
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding()
+        .background(Color.gray.opacity(0.1))
+        .cornerRadius(12)
+    }
+}
+
 #Preview {
     StudyCenterView()
         .environmentObject(UserService())

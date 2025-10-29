@@ -7,23 +7,26 @@ class WordService: ObservableObject {
     @Published var words: [Word] = []
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
+    @Published private(set) var learningRecords: [LearningRecord] = []
     
     private let userDefaults = UserDefaults.standard
     private let wordsKey = "wordsDatabase"
+    private let learningRecordsKey = "learningRecords"
     
     init() {
         loadWords()
+        loadLearningRecords()
     }
      
     // MARK: - 单词数据管理
     func loadWords() {
         isLoading = true
+        defer { isLoading = false }
         
         // 首先尝试从本地加载
         if let data = userDefaults.data(forKey: wordsKey),
            let savedWords = try? JSONDecoder().decode([Word].self, from: data) {
             words = savedWords
-            isLoading = false
             return
         }
         
@@ -60,7 +63,21 @@ class WordService: ObservableObject {
                  frequency: 4, isEssential: true)
         ]
         saveWords()
-        isLoading = false
+    }
+    
+    private func loadLearningRecords() {
+        guard let data = userDefaults.data(forKey: learningRecordsKey),
+              let savedRecords = try? JSONDecoder().decode([LearningRecord].self, from: data) else {
+            learningRecords = []
+            return
+        }
+        learningRecords = savedRecords
+    }
+    
+    private func saveLearningRecords() {
+        if let data = try? JSONEncoder().encode(learningRecords) {
+            userDefaults.set(data, forKey: learningRecordsKey)
+        }
     }
     
     func saveWords() {
@@ -91,9 +108,40 @@ class WordService: ObservableObject {
     }
     
     func getWordsForReview(userId: UUID) -> [Word] {
-        // 这里应该根据用户的学习记录来获取需要复习的单词
-        // 暂时返回一些示例单词
-        return Array(words.shuffled().prefix(10))
+        guard !words.isEmpty else { return [] }
+        
+        let userRecords = learningRecords.filter { $0.userId == userId }
+        let grouped = Dictionary(grouping: userRecords, by: { $0.wordId })
+        let today = Calendar.current.startOfDay(for: Date())
+        var reviewWordIds: Set<UUID> = []
+        
+        for (wordId, records) in grouped {
+            let mastery = calculateMasteryLevel(for: records)
+            let lastStudy = records.max(by: { $0.studyDate < $1.studyDate })?.studyDate ?? Date.distantPast
+            let lastStudyDay = Calendar.current.startOfDay(for: lastStudy)
+            let daysSinceStudy = Calendar.current.dateComponents([.day], from: lastStudyDay, to: today).day ?? Int.max
+            
+            if mastery == .new || mastery == .learning || daysSinceStudy >= 2 {
+                reviewWordIds.insert(wordId)
+            }
+        }
+        
+        var reviewWords = words.filter { reviewWordIds.contains($0.id) }
+        if reviewWords.count < 10 {
+            let untouchedWords = words.filter { grouped[$0.id] == nil }
+            let needed = 10 - reviewWords.count
+            reviewWords.append(contentsOf: untouchedWords.shuffled().prefix(needed))
+        }
+        
+        if reviewWords.count < 10 {
+            let additional = words
+                .filter { !reviewWordIds.contains($0.id) }
+                .shuffled()
+                .prefix(10 - reviewWords.count)
+            reviewWords.append(contentsOf: additional)
+        }
+        
+        return Array(reviewWords.prefix(10))
     }
     
     func searchWords(_ query: String) -> [Word] {
@@ -106,24 +154,44 @@ class WordService: ObservableObject {
     // MARK: - 学习进度
     func recordStudySession(wordId: UUID, userId: UUID, studyType: StudyType, 
                            isCorrect: Bool, timeSpent: Int, difficulty: WordDifficulty) {
-        let record = LearningRecord(
+        let minimumTime = max(timeSpent, 1)
+        let provisionalRecord = LearningRecord(
             wordId: wordId,
             userId: userId,
             studyType: studyType,
             isCorrect: isCorrect,
-            timeSpent: timeSpent,
+            timeSpent: minimumTime,
             difficulty: difficulty
         )
         
-        // 这里应该保存学习记录到数据库
-        // 暂时只打印日志
-        print("学习记录: \(record)")
+        var history = learningRecords.filter { $0.userId == userId && $0.wordId == wordId }
+        history.append(provisionalRecord)
+        let mastery = calculateMasteryLevel(for: history)
+        let finalizedRecord = LearningRecord(
+            wordId: wordId,
+            userId: userId,
+            studyType: studyType,
+            isCorrect: isCorrect,
+            timeSpent: minimumTime,
+            difficulty: difficulty,
+            masteryLevel: mastery
+        )
+        
+        learningRecords.append(finalizedRecord)
+        saveLearningRecords()
+        
+        // 限制学习记录总量，避免无限增长
+        if learningRecords.count > 1000 {
+            learningRecords = Array(learningRecords.suffix(1000))
+            saveLearningRecords()
+        }
+        
+        print("学习记录: \(finalizedRecord)")
     }
     
     func getWordMasteryLevel(wordId: UUID, userId: UUID) -> MasteryLevel {
-        // 这里应该根据学习记录计算掌握程度
-        // 暂时返回随机值
-        return MasteryLevel.allCases.randomElement() ?? .new
+        let records = learningRecords.filter { $0.userId == userId && $0.wordId == wordId }
+        return calculateMasteryLevel(for: records)
     }
     
     // MARK: - 辅助方法
@@ -134,6 +202,27 @@ class WordService: ObservableObject {
         case 5...6: return .intermediate
         case 7...8: return .upperIntermediate
         default: return .advanced
+        }
+    }
+    
+    private func calculateMasteryLevel(for records: [LearningRecord]) -> MasteryLevel {
+        guard !records.isEmpty else { return .new }
+        
+        let total = records.count
+        let correctCount = records.filter { $0.isCorrect }.count
+        let accuracy = Double(correctCount) / Double(total)
+        let recentSlice = records.suffix(5)
+        let recentCorrect = recentSlice.filter { $0.isCorrect }.count
+        let recentAccuracy = Double(recentCorrect) / Double(recentSlice.count)
+        
+        if accuracy >= 0.9 && recentAccuracy >= 0.8 && recentSlice.count >= 3 {
+            return .mastered
+        } else if accuracy >= 0.7 && recentAccuracy >= 0.6 {
+            return .familiar
+        } else if accuracy >= 0.4 {
+            return .learning
+        } else {
+            return .new
         }
     }
 }

@@ -13,9 +13,6 @@ class UserService: ObservableObject {
     private let userKey = "currentUser"
     
     init() {
-        // 确保初始状态是未登录
-        isLoggedIn = false
-        currentUser = nil
         loadUser()
     }
     
@@ -24,46 +21,37 @@ class UserService: ObservableObject {
         isLoading = true
         defer { isLoading = false }
         
-        // 模拟网络请求
-        try? await Task.sleep(nanoseconds: 1_000_000_000) // 1秒延迟
+        guard !email.isEmpty else { return .failure(.invalidInput) }
+        guard password.count >= 4 else { return .failure(.invalidInput) }
         
-        // 简单的本地验证（实际应用中应该连接服务器）
-        if email == "test@example.com" && password == "123456" {
-            let user = User(username: "测试用户", email: email)
-            print("设置登录状态前 - isLoggedIn: \(self.isLoggedIn)")
-            self.currentUser = user
-            self.isLoggedIn = true
-            print("设置登录状态后 - isLoggedIn: \(self.isLoggedIn)")
-            self.saveUser(user)
-            return .success(user)
-        } else {
-            return .failure(.invalidCredentials)
-        }
+        let nameHint = email.split(separator: "@").first.map { String($0) } ?? "口语学员"
+        let displayName = nameHint.capitalized.isEmpty ? "口语学员" : nameHint.capitalized
+        let user = User(username: displayName, email: email)
+        self.currentUser = user
+        self.isLoggedIn = true
+        self.saveUser(user)
+        return .success(user)
     }
     
     func register(username: String, email: String, password: String) async -> Result<User, AuthError> {
         isLoading = true
         defer { isLoading = false }
         
-        // 模拟网络请求
-        try? await Task.sleep(nanoseconds: 1_500_000_000) // 1.5秒延迟
-        
-        // 简单的本地验证
-        if email.contains("@") && password.count >= 6 {
-            let user = User(username: username, email: email)
-            self.currentUser = user
-            self.isLoggedIn = true
-            self.saveUser(user)
-            return .success(user)
-        } else {
+        guard !username.trimmingCharacters(in: .whitespaces).isEmpty,
+              email.contains("@"),
+              password.count >= 4 else {
             return .failure(.invalidInput)
         }
+        
+        let user = User(username: username, email: email)
+        self.currentUser = user
+        self.isLoggedIn = true
+        self.saveUser(user)
+        return .success(user)
     }
     
     func logout() {
-        currentUser = nil
-        isLoggedIn = false
-        userDefaults.removeObject(forKey: userKey)
+        provisionGuestAccount(resetProgress: false)
     }
     
     // MARK: - 用户数据管理
@@ -122,6 +110,58 @@ class UserService: ObservableObject {
         }
     }
     
+    // MARK: - 学习记录
+    func recordStudySession(for word: Word, isCorrect: Bool, timeSpent: Int) {
+        guard var user = currentUser else { return }
+        
+        user.studyStats.totalAnswers += 1
+        if isCorrect {
+            user.studyStats.correctAnswers += 1
+            user.studyStats.totalWordsLearned += 1
+        }
+        
+        let studyMinutes = max(1, Int(round(Double(timeSpent) / 60.0)))
+        user.studyStats.totalStudyTime += studyMinutes
+        
+        let calendar = Calendar.current
+        let now = Date()
+        let today = calendar.startOfDay(for: now)
+        
+        if let lastStudy = user.studyStats.lastStudyDate {
+            let lastDay = calendar.startOfDay(for: lastStudy)
+            if calendar.isDate(today, inSameDayAs: lastDay) {
+                // 同一天学习，不改变 streak
+            } else if let nextDay = calendar.date(byAdding: .day, value: 1, to: lastDay),
+                      calendar.isDate(nextDay, inSameDayAs: today) {
+                user.studyStats.currentStreak += 1
+            } else {
+                user.studyStats.currentStreak = 1
+            }
+        } else {
+            user.studyStats.currentStreak = 1
+        }
+        
+        user.studyStats.lastStudyDate = now
+        user.studyStats.longestStreak = max(user.studyStats.longestStreak, user.studyStats.currentStreak)
+        user.streakDays = user.studyStats.currentStreak
+        user.lastLoginDate = now
+        
+        let weekdayIndex = (calendar.component(.weekday, from: today) + 5) % 7
+        if user.studyStats.weeklyProgress.indices.contains(weekdayIndex) {
+            user.studyStats.weeklyProgress[weekdayIndex] += 1
+        }
+        
+        let dayIndex = calendar.component(.day, from: today) - 1
+        if user.studyStats.monthlyProgress.indices.contains(dayIndex) {
+            user.studyStats.monthlyProgress[dayIndex] += 1
+        }
+        
+        updateUser(user)
+        
+        let xpGain = isCorrect ? 10 : 2
+        addXP(xpGain)
+    }
+    
     // MARK: - 数据持久化
     private func saveUser(_ user: User) {
         if let data = try? JSONEncoder().encode(user) {
@@ -130,12 +170,29 @@ class UserService: ObservableObject {
     }
     
     private func loadUser() {
-        // 暂时禁用自动登录，确保显示登录页面
-        // if let data = userDefaults.data(forKey: userKey),
-        //    let user = try? JSONDecoder().decode(User.self, from: data) {
-        //     currentUser = user
-        //     isLoggedIn = true
-        // }
+        if let data = userDefaults.data(forKey: userKey),
+           let user = try? JSONDecoder().decode(User.self, from: data) {
+            currentUser = user
+            isLoggedIn = true
+        } else {
+            provisionGuestAccount(resetProgress: true)
+        }
+    }
+    
+    private func provisionGuestAccount(resetProgress: Bool) {
+        var guest = User(username: "口语新手", email: "guest@practice.app")
+        if !resetProgress, let existing = currentUser {
+            guest.totalXP = existing.totalXP
+            guest.level = existing.level
+            guest.streakDays = existing.streakDays
+            guest.studyStats = existing.studyStats
+            guest.learningGoals = existing.learningGoals
+        }
+        guest.isPremium = false
+        guest.learningGoals.dailyWords = 5
+        currentUser = guest
+        isLoggedIn = true
+        saveUser(guest)
     }
 }
 
