@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import Foundation
 
 struct SpokenTextView: UIViewRepresentable {
     let text: String
@@ -29,7 +30,7 @@ struct SpokenTextView: UIViewRepresentable {
     
     func updateUIView(_ uiView: UILabel, context: Context) {
         let ranges = calculateWordRanges(in: text)
-        uiView.attributedText = buildAttributedString(using: ranges)
+        uiView.attributedText = buildAttributedString(using: ranges, font: uiView.font)
         let currentWidth = uiView.bounds.width
         if currentWidth > 0 && uiView.preferredMaxLayoutWidth != currentWidth {
             uiView.preferredMaxLayoutWidth = currentWidth
@@ -44,9 +45,14 @@ struct SpokenTextView: UIViewRepresentable {
         Coordinator()
     }
     
-    private func buildAttributedString(using ranges: [Range<String.Index>]) -> NSAttributedString {
+    private func buildAttributedString(using ranges: [Range<String.Index>], font: UIFont) -> NSAttributedString {
         let attributed = NSMutableAttributedString(string: text)
         let fullRange = NSRange(location: 0, length: attributed.length)
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .left
+        paragraph.lineBreakMode = .byWordWrapping
+        attributed.addAttribute(.font, value: font, range: fullRange)
+        attributed.addAttribute(.paragraphStyle, value: paragraph, range: fullRange)
         attributed.addAttribute(.foregroundColor, value: UIColor.label, range: fullRange)
         attributed.addAttribute(.backgroundColor, value: UIColor.clear, range: fullRange)
         
@@ -70,7 +76,6 @@ struct SpokenTextView: UIViewRepresentable {
             attributed.addAttribute(.foregroundColor, value: UIColor.white, range: nsRange)
             attributed.addAttribute(.backgroundColor, value: UIColor.systemBlue, range: nsRange)
         }
-        
         return attributed
     }
     
@@ -91,6 +96,7 @@ struct SpokenTextView: UIViewRepresentable {
         
         private func range(at location: CGPoint, label: UILabel) -> (Int, Range<String.Index>)? {
             guard let attributedText = label.attributedText else { return nil }
+            
             let textStorage = NSTextStorage(attributedString: attributedText)
             let layoutManager = NSLayoutManager()
             textStorage.addLayoutManager(layoutManager)
@@ -99,13 +105,30 @@ struct SpokenTextView: UIViewRepresentable {
             textContainer.maximumNumberOfLines = label.numberOfLines
             textContainer.lineBreakMode = label.lineBreakMode
             layoutManager.addTextContainer(textContainer)
+            layoutManager.ensureLayout(for: textContainer)
             
-            let index = layoutManager.characterIndex(for: location, in: textContainer, fractionOfDistanceBetweenInsertionPoints: nil)
-            guard index < attributedText.length,
-                  let swiftRange = Range(NSRange(location: index, length: 0), in: text) else { return nil }
-            if let matchIndex = wordRanges.firstIndex(where: { $0.contains(swiftRange.lowerBound) }) {
-                return (matchIndex, wordRanges[matchIndex])
+            // Map touch directly into the text container's coordinate space for top-left alignment
+            let locationInTextContainer = CGPoint(x: location.x, y: location.y)
+            
+            let glyphIndex = layoutManager.glyphIndex(for: locationInTextContainer, in: textContainer)
+            guard glyphIndex < layoutManager.numberOfGlyphs else { return nil }
+            let glyphRect = layoutManager.boundingRect(forGlyphRange: NSRange(location: glyphIndex, length: 1), in: textContainer)
+            guard glyphRect.insetBy(dx: -6, dy: -8).contains(locationInTextContainer) else { return nil }
+            
+            let characterIndex = layoutManager.characterIndexForGlyph(at: glyphIndex)
+            guard characterIndex < attributedText.length else { return nil }
+            
+            for (index, range) in wordRanges.enumerated() {
+                let nsRange = NSRange(range, in: text)
+                if NSLocationInRange(characterIndex, nsRange) {
+                    return (index, range)
+                }
+                if characterIndex == nsRange.location + nsRange.length, index + 1 < wordRanges.count {
+                    // tap landed at trailing space, snap to next token
+                    return (index + 1, wordRanges[index + 1])
+                }
             }
+            
             return nil
         }
     }
